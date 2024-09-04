@@ -1,4 +1,11 @@
 # Bayesian MMM Test
+# Nabeel Paruk
+# 04/09/2024
+# Notes:
+# - 'conversions' needs to be adjusted as a name and be allowed to vary i.e. to impressions or ctr etc
+# - The EDA section needs to be completed
+# - 
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -44,9 +51,45 @@ def time_series_features(df):
     df_column_list = df.columns.to_list()
 
     df_features = df_features[[df_column_list]]
-    return df_features()
+    return df_features, df_column_list
 
+def create_priors(df_features, df_column_list):
+    """
+    Setup the model and create the priors using the features
+    Args:
+        df_column_list: Column list returned from time_series_features function
+        df_features: DataFrame features returned from time_series_features function
+    """
+    # Determine total spend per channel
+    df_temp_col_list = df_column_list.remove("date")
+    df_temp_col_list = df_temp_col_list.remove("conversions")
+    df_temp_col_list = df_temp_col_list.remove("trend")
+    df_temp_col_list = df_temp_col_list.remove("year")
+    df_temp_col_list = df_temp_col_list.remove("month")
+    df_temp_col_list = df_temp_col_list.remove("dayofyear")
 
+    total_spend_per_channel = df_features[[df_temp_col_list]].sum(axis=0)
+
+    # Get spend proportion
+    spend_proportion = total_spend_per_channel / total_spend_per_channel.sum()
+
+    # Define parameters
+    HALFNORMAL_SCALE = 1 / np.sqrt(1 - 2 / np.pi)
+    n_channels = len(df_temp_col_list)
+
+    # Prior sigma
+    prior_sigma = HALFNORMAL_SCALE * n_channels * spend_proportion
+    
+    return prior_sigma
+
+def create_model_specification(df_features):
+    """
+    Define feature and target variables and create the model specification using the default model configuration
+    Args:
+        df_features: DataFrame features returned from time_series_features function
+    """
+    # Define features and target variables
+    X = 
 
 
 def main():
