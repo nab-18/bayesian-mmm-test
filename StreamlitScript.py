@@ -319,13 +319,13 @@ def main():
             progress_text = "Fitting model. This should take about 20 minutes."
             my_bar = st.progress(0, text=progress_text)
 
+            fit_model(final_model, X, y)
             for percent_complete in range(100):
                 time.sleep(22)
                 my_bar.progress(percent_complete + 1, text=progress_text)
             time.sleep(22*60)
             my_bar.empty()
 
-            fit_model(final_model, X, y)
     
             # Visualisations
             if st.button("Evaluate the model"):  # Add descriptions to each plot, this is currnetly very uninformative and difficult to interpret
