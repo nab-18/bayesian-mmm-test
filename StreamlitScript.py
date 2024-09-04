@@ -82,7 +82,7 @@ def create_priors(df_features, df_column_list):
     
     return prior_sigma, channel_list
 
-def create_model_specification(df_features, channel_list):
+def create_model_specification(df_features, channel_list, yearly_seasonality=2):
     """
     Define feature and target variables and creates a dummy model specification using the default model configuration
     Args:
@@ -102,9 +102,10 @@ def create_model_specification(df_features, channel_list):
             "year",
             "month"
         ],
-        adstock_max_lag=8
+        adstock_max_lag=8,
+        yearly_seasonality=yearly_seasonality
     )
-    return dummy_model
+    return dummy_model, X, y
 
 def custom_config(int_dist='Normal', int_mu=0, int_sigma=2,
                   beta_dist='HalfNormal', beta_sigma=2,
@@ -239,7 +240,7 @@ def main():
     prior_sigma, channel_list = create_priors(df_features, df_column_list)
 
     # - Create model specification with default config
-    dummy_model = create_model_specification(df_features, channel_list)
+    dummy_model, X, y = create_model_specification(df_features, channel_list)
 
     # - Custom configuration?
         # We can create multiple premade configurations for different applications. More research is required
@@ -252,6 +253,7 @@ def main():
     if specify_config == "Default":
         # Set the final model to the default configuration
         final_model = dummy_model
+        yearly_seasonality = st.text_input("Yearly seasonality (Defaults to 2)", 2)
 
     elif specify_config == "Custom":
         # Allow the user to input their custom configuration
@@ -266,7 +268,7 @@ def main():
 
         # - Likelihood
         ll_dist='Normal'
-        l_sigma_dist='HalfNormal'
+        ll_sigma_dist = 'HalfNormal'
         ll_sigma_sigma = int(st.text_input("Likelihood Normal Distribution sigma hyperparameter", 2))
 
         # - Alpha
@@ -289,6 +291,22 @@ def main():
         gam_fou_mu = int(st.text_input("Gamma Fourier Laplace Distribution mu parameter", 0))
         gam_fou_b = int(st.text_input("Gamma Fourier Laplace Distribution beta parameter", 1))
 
+        # Define configuration
+        my_model_config = custom_config(int_dist, int_mu, int_sigma,
+                  beta_dist, beta_sigma,
+                  ll_dist, ll_sigma_dist, ll_sigma_sigma,
+                  alpha_dist, alpha_alpha, alpha_beta,
+                  lam_dist, lam_alpha, lam_beta,
+                  gam_con_dist, gam_con_mu, gam_con_sigma,
+                  gam_fou_dist, gam_fou_mu, gam_fou_b)
+        
+        # Create custom configuration model
+        yearly_seasonality = st.text_input("Yearly seasonality (Defaults to 2)", 2)
+        final_model = delayed_saturated_mmm(my_model_config, channel_list, yearly_seasonality)
+
+    # Fit the model
+    if st.button("Create model"):
+        fit_model(final_model, X, y)
 
 
 if __name__ == '__main__':
