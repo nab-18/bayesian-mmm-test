@@ -318,9 +318,62 @@ def main():
         if st.button("Create model"):
             progress_text = "Fitting model. This should take about 20 minutes."
             my_bar = st.progress(0, text=progress_text)
-            # Fix this: find a way to track the time
+
+            for percent_complete in range(100):
+                time.sleep(22)
+                my_bar.progress(percent_complete + 1, text=progress_text)
+            time.sleep(22*60)
+            my_bar.empty()
+
             fit_model(final_model, X, y)
-            
+    
+            # Visualisations
+            if st.button("Evaluate the model"):  # Add descriptions to each plot, this is currnetly very uninformative and difficult to interpret
+                st.header("Visualisations")
+
+                # Component contributions
+                st.subheader("Posterior Predictive Model Components")
+                fig = final_model.plot_components_contributions()
+                st.pyplot(fig)
+
+                # Direct contribution curves
+                st.subheader("Direct Contribution Curves per Platform")
+                fig = final_model.plot_direct_contribution_curves()
+                st.pyplot(fig)
+
+                # Channel contributions
+                st.subheader("Channel Contributions as a function of cost share")
+                fig = final_model.plot_channel_contributions_grid(start=0, stop=1.5, num=12, absolute_xrange=True)
+                st.pyplot(fig)
+
+                # Get ROAS
+                # - Get the samples
+                get_mean_contributions_over_time_df = final_model.compute_mean_contributions_over_time(original_scale=True)
+                channel_contribution_original_scale = final_model.compute_channel_contribution_original_scale()
+
+                roas_samples = (
+                    channel_contribution_original_scale.stack(sample=("chain", "draw")).sum("date")
+                    / X[channel_list].sum().to_numpy()[..., None]
+                )
+
+                # - Visualise the samples
+                st.subheader("Visualise the ROAS Posterior Distribution")
+                fig, ax = plt.subplots(figsize=(15, 6))
+                for channel in channel_list:
+                    sns.histplot(
+                        roas_samples.sel(channel=channel).to_numpy(), binrange=(0,0.005) ,alpha=0.3, kde=True, ax=ax, legend=True, label = channel
+                    )
+                ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
+                ax.set(title="Posterior ROAS distribution", xlabel="ROAS")
+                st.pyplot(fig)
+
+                # - Get the ROAS summary per platform in a dataframe
+                st.subheader("ROAS Summary per Platform")
+                roas_df = roas_samples.to_dataframe(name="roas")
+
+                roas_df.groupby("channel").mean()
+                roas_summary = roas_df.groupby("channel")['roas'].describe(percentiles=[0.025, 0.975])
+                st.dataframe(roas_summary)
 
 
 if __name__ == '__main__':
