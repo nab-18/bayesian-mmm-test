@@ -68,7 +68,7 @@ def create_priors(df_features, df_column_list):
     channel_list = channel_list.remove("month")
     channel_list = channel_list.remove("dayofyear")
 
-    total_spend_per_channel = df_features[[df_temp_col_list]].sum(axis=0)
+    total_spend_per_channel = df_features[[channel_list]].sum(axis=0)
 
     # Get spend proportion
     spend_proportion = total_spend_per_channel / total_spend_per_channel.sum()
@@ -116,9 +116,19 @@ def custom_config(int_dist='Normal', int_mu=0, int_sigma=2,
     # This needs more research. What changes does each parameter and distribution do and how can we communicate this in simpler terms?
     # Also need to allow for adjustment of the distributions and not just the parameters
     """
-    Allow user to define a custom configuration for the model
-    At this point, changing the distributions is not advised as the parameter names need to be adjusted in the function
+    Allow user to define a custom configuration for the model ( define custom priors)
+    At this point, changing the distributions is not advised as the parameter names need to be adjusted in the function.
+    Note that distributions can be specified on the hyperparameters.
     Args:
+        int_*: The intercept specified distribution and hyperparameters
+        beta_*: The beta channel specified distribution and hyperparameters
+        ll_*: The likelihood specified distribution and hyperparameters
+        alpha_*: The alpha specified distribution and hyperparameters
+        lam_*: The lambda specified distribution and hyperparameters
+        gam_con_*: The gamma control specified distribution and hyperparameters
+        gam_fou_*: The gamma fourier specified distribution and hyperparameters
+        *_dist: The specified distribution for the relevant parameter
+
 
     """
     my_model_config = {
@@ -163,15 +173,54 @@ def custom_config(int_dist='Normal', int_mu=0, int_sigma=2,
             'kwargs': {'mu': gam_fou_mu, 'b': gam_fou_b}
         },
     }
-    # Define sampler config
+
+    return my_model_config
+
+def delayed_saturated_mmm(my_model_config, channel_list, yearly_seasonality=2):
+    """
+    Creates sample configuration and defines your DelayedSaturatedMMM with the chosen parameters.
+    Args:
+        my_model_config: The model configuration chosen in custom_config
+        channel_list: The list of channels in the dataset
+        yearly_seasonality: The number of seasonal cycles that should be considered
+    """
+    # Define sample configuration
     my_sampler_config = {
         "progressbar": True,
         "cores": 1,
     }
-    return my_model_config, my_sampler_config
+    # Define the DelayedSaturatedMMM
+    mmm = DelayedSaturatedMMM(
+        model_config = my_model_config,
+        sampler_config = my_sampler_config,
+        date_column = "date",
+        channel_columns = channel_list,
+        control_columns = [
+            "trend",
+            "year",
+            "month",
+        ],
+        adstock_max_lag=8,
+        yearly_seasonality=yearly_seasonality
+    )
+
+    return mmm
+
+def fit_model(model, X, y, random_seed=1):
+    """
+    Fit your model on the data.
+    Args:
+        X: Feature variables defined in create_model_specification
+        y: Target variables created in create_model_specification
+        target_accept: The 
+    """
+    model.fit(X, y, target_accept=0.95, random_seed=random_seed)
 
 
 def main():
+    """
+    Main body of code. Create Streamlit implementation here.
+    """
     # Headers and introduction
     st.title("Bayesian Marketing Mixed Model")
     st.write("This is your instructions -> Write something")
@@ -181,9 +230,12 @@ def main():
 
     # Perform EDA
 
-    # Process for time series features
+    # Preprocessing
+    #  - Process for time series features
     df = read_in_data(uploaded_file)
+    df_features, df_column_list = time_series_features(df)
 
+    
 
 
 
