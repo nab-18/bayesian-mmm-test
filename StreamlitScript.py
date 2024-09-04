@@ -223,6 +223,7 @@ def fit_model(model, X, y, random_seed=1):
         random_seed: Specify for reproducibility
     """
     model.fit(X, y, target_accept=0.95, random_seed=random_seed)
+    return model
 
 
 def main():
@@ -316,19 +317,15 @@ def main():
 
         # Fit the model
         if st.button("Create model"):
-            progress_text = "Fitting model. This should take about 20 minutes."
-            my_bar = st.progress(0, text=progress_text)
-
-            fit_model(final_model, X, y)
-            for percent_complete in range(100):
-                time.sleep(22)
-                my_bar.progress(percent_complete + 1, text=progress_text)
-            time.sleep(22*60)
-            my_bar.empty()
+            with st.status("Fitting model...") as status:
+                final_model.fit(X, y, target_accept = 0.95, random_seed = 888)
+                status.update(label="Model has been fit!", state="complete", expanded=False)
+            
 
     
-            # Visualisations
-            if st.button("Evaluate the model"):  # Add descriptions to each plot, this is currnetly very uninformative and difficult to interpret
+        # Visualisations
+            if st.button("Evaluate the model"):  # Add descriptions to each plot, this is currently very uninformative and difficult to interpret
+                #try:
                 st.header("Visualisations")
 
                 # Component contributions
@@ -374,6 +371,9 @@ def main():
                 roas_df.groupby("channel").mean()
                 roas_summary = roas_df.groupby("channel")['roas'].describe(percentiles=[0.025, 0.975])
                 st.dataframe(roas_summary)
+            
+            #except:
+                # st.warning("Your model might not have been fit. Please fit the model before evaluating it.")
 
 
 if __name__ == '__main__':
