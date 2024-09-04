@@ -13,6 +13,7 @@ import pytime as tk
 from pymc_marketing.mmm.delayed_saturated_mmm import DelayedSaturatedMMM
 import seaborn as sns
 import matplotlib.pyplot as plt
+import time
 
 # Functions
 def read_in_data(upload):
@@ -317,7 +318,9 @@ def main():
         if st.button("Create model"):
             progress_text = "Fitting model. This should take about 20 minutes."
             my_bar = st.progress(0, text=progress_text)
+            # Fix this: find a way to track the time
             fit_model(final_model, X, y)
+            
 
 
 if __name__ == '__main__':
