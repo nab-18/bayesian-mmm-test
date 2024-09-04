@@ -61,12 +61,12 @@ def create_priors(df_features, df_column_list):
         df_features: DataFrame features returned from time_series_features function
     """
     # Determine total spend per channel
-    df_temp_col_list = df_column_list.remove("date")
-    df_temp_col_list = df_temp_col_list.remove("conversions")
-    df_temp_col_list = df_temp_col_list.remove("trend")
-    df_temp_col_list = df_temp_col_list.remove("year")
-    df_temp_col_list = df_temp_col_list.remove("month")
-    df_temp_col_list = df_temp_col_list.remove("dayofyear")
+    channel_list = df_column_list.remove("date")
+    channel_list = channel_list.remove("conversions")
+    channel_list = channel_list.remove("trend")
+    channel_list = channel_list.remove("year")
+    channel_list = channel_list.remove("month")
+    channel_list = channel_list.remove("dayofyear")
 
     total_spend_per_channel = df_features[[df_temp_col_list]].sum(axis=0)
 
@@ -75,21 +75,100 @@ def create_priors(df_features, df_column_list):
 
     # Define parameters
     HALFNORMAL_SCALE = 1 / np.sqrt(1 - 2 / np.pi)
-    n_channels = len(df_temp_col_list)
+    n_channels = len(channel_list)
 
     # Prior sigma
     prior_sigma = HALFNORMAL_SCALE * n_channels * spend_proportion
     
-    return prior_sigma
+    return prior_sigma, channel_list
 
-def create_model_specification(df_features):
+def create_model_specification(df_features, channel_list):
     """
-    Define feature and target variables and create the model specification using the default model configuration
+    Define feature and target variables and creates a dummy model specification using the default model configuration
     Args:
         df_features: DataFrame features returned from time_series_features function
+        channel_list: Channel list retrieved from create_priors function
     """
-    # Define features and target variables
-    X = 
+    # Define feature and target variables
+    X = df_features.drop("conversions", axis=1)
+    y = df_features["conversions"]
+
+    # Initialise the default model configuration
+    dummy_model = DelayedSaturatedMMM(
+        date_column = 'date',
+        channel_columns = channel_list,
+        control_columns = [
+            "trend",
+            "year",
+            "month"
+        ],
+        adstock_max_lag=8
+    )
+    return dummy_model
+
+def custom_config(int_dist='Normal', int_mu=0, int_sigma=2,
+                  beta_dist='HalfNormal', beta_sigma=2,
+                  ll_dist='Normal', ll_sigma_dist='HalfNormal', ll_sigma_sigma=2,
+                  alpha_dist='Beta', alpha_alpha=1, alpha_beta=3,
+                  lam_dist='Gamma', lam_alpha=1, lam_beta=1,
+                  gam_con_dist='Normal', gam_con_mu=0, gam_con_sigma=2,
+                  gam_fou_dist='Laplace', gam_fou_mu=0, gam_fou_b=1):
+    # This needs more research. What changes does each parameter and distribution do and how can we communicate this in simpler terms?
+    # Also need to allow for adjustment of the distributions and not just the parameters
+    """
+    Allow user to define a custom configuration for the model
+    At this point, changing the distributions is not advised as the parameter names need to be adjusted in the function
+    Args:
+
+    """
+    my_model_config = {
+        'intercept': {
+            'dist': int_dist,
+            'kwargs': {
+                'mu': int_mu,
+                'sigma': int_sigma
+            }
+        },
+        'beta_channel': {
+            'dist': beta_dist,
+            'kwargs': {
+                'sigma': beta_sigma
+            }
+        },
+        "likelihood": {
+            "dist": ll_dist,
+            "kwargs":{
+                "sigma":{
+                    'dist': ll_sigma_dist,
+                    'kwargs': {
+                        'sigma': ll_sigma_sigma
+                    }
+                }
+            }
+        },
+        'alpha': {
+            'dist': alpha_dist,
+            'kwargs': {'alpha': alpha_alpha, 'beta': alpha_beta}
+        },
+        'lam': {
+            'dist': lam_dist,
+            'kwargs': {'alpha': lam_alpha, 'beta': lam_beta}
+        },
+        'gamma_control': {
+            'dist': gam_con_dist,
+            'kwargs': {'mu': gam_con_mu, 'sigma': gam_con_sigma}
+        },
+        'gamma_fourier': {
+            'dist': gam_fou_dist,
+            'kwargs': {'mu': gam_fou_mu, 'b': gam_fou_b}
+        },
+    }
+    # Define sampler config
+    my_sampler_config = {
+        "progressbar": True,
+        "cores": 1,
+    }
+    return my_model_config, my_sampler_config
 
 
 def main():
