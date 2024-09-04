@@ -14,6 +14,7 @@ from pymc_marketing.mmm.delayed_saturated_mmm import DelayedSaturatedMMM
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+# Functions
 def read_in_data(upload):
     """
     Reads in data and preprocesses it for EDA
@@ -49,8 +50,9 @@ def time_series_features(df):
     # Make column names lower case and add to a list
     df.columns = [col.lower() for col in df.columns]
     df_column_list = df.columns.to_list()
+    df_features_column_list = df_features.columns.to_list()
 
-    df_features = df_features[[df_column_list]]
+    df_features = df_features[df_features_column_list]
     return df_features, df_column_list
 
 def create_priors(df_features, df_column_list):
@@ -61,14 +63,11 @@ def create_priors(df_features, df_column_list):
         df_features: DataFrame features returned from time_series_features function
     """
     # Determine total spend per channel
-    channel_list = df_column_list.remove("date")
-    channel_list = channel_list.remove("conversions")
-    channel_list = channel_list.remove("trend")
-    channel_list = channel_list.remove("year")
-    channel_list = channel_list.remove("month")
-    channel_list = channel_list.remove("dayofyear")
+    channel_list = df_column_list
+    channel_list.remove("date")
+    channel_list.remove("conversions")
 
-    total_spend_per_channel = df_features[[channel_list]].sum(axis=0)
+    total_spend_per_channel = df_features[channel_list].sum(axis=0)
 
     # Get spend proportion
     spend_proportion = total_spend_per_channel / total_spend_per_channel.sum()
@@ -93,8 +92,15 @@ def create_model_specification(df_features, channel_list, yearly_seasonality=2):
     X = df_features.drop("conversions", axis=1)
     y = df_features["conversions"]
 
+    # Define sampler configuration
+    my_sampler_config = {
+        "progressbar": True,
+        "cores": 1,
+    }
+
     # Initialise the default model configuration
     dummy_model = DelayedSaturatedMMM(
+        sampler_config=my_sampler_config,
         date_column = 'date',
         channel_columns = channel_list,
         control_columns = [
@@ -229,84 +235,89 @@ def main():
     # Upload file
     uploaded_file = st.file_uploader("Upload your csv file", type=['csv'])
 
-    # Perform EDA
 
-    # Preprocessing
-    #  - Process for time series features
-    df = read_in_data(uploaded_file)
-    df_features, df_column_list = time_series_features(df)
+    if uploaded_file is not None:
+        # Perform EDA
 
-    # - Create the priors
-    prior_sigma, channel_list = create_priors(df_features, df_column_list)
 
-    # - Create model specification with default config
-    dummy_model, X, y = create_model_specification(df_features, channel_list)
+        # Preprocessing
+        #  - Process for time series features
+        df = read_in_data(uploaded_file)
+        df_features, df_column_list = time_series_features(df)
 
-    # - Custom configuration?
-        # We can create multiple premade configurations for different applications. More research is required
-    specify_config = st.radio("Which configuration would you like to use?",
-                              ["Default", "Custom"],
-                              captions=[
-                                  "Use the default configuration",
-                                  "Create your own custom configuration. Leaving variables blank will result in default values."
-                              ])
-    if specify_config == "Default":
-        # Set the final model to the default configuration
-        final_model = dummy_model
-        yearly_seasonality = st.text_input("Yearly seasonality (Defaults to 2)", 2)
+        # - Create the priors
+        prior_sigma, channel_list = create_priors(df_features, df_column_list)
 
-    elif specify_config == "Custom":
-        # Allow the user to input their custom configuration
-        # - Intercept
-        int_dist = 'Normal'
-        int_mu = int(st.text_input("Intercept Normal Distribution mu parameter", 0))
-        int_sigma = int(st.text_input("Intercept Normal Distribution sigma parameter", 2))
+        # - Create model specification with default config
+        dummy_model, X, y = create_model_specification(df_features, channel_list)
 
-        # - Beta channel
-        beta_dist='HalfNormal'
-        beta_sigma = int(st.text_input("Beta_Channel HalfNormal Distribution sigma parameter", 2))
+        # - Custom configuration?
+            # We can create multiple premade configurations for different applications. More research is required
+        specify_config = st.radio("Which configuration would you like to use?",
+                                ["Default", "Custom"],
+                                captions=[
+                                    "Use the default configuration",
+                                    "Create your own custom configuration. Leaving variables blank will result in default values."
+                                ])
+        if specify_config == "Default":
+            # Set the final model to the default configuration
+            final_model = dummy_model
+            yearly_seasonality = st.text_input("Yearly seasonality (Defaults to 2)", 2)
 
-        # - Likelihood
-        ll_dist='Normal'
-        ll_sigma_dist = 'HalfNormal'
-        ll_sigma_sigma = int(st.text_input("Likelihood Normal Distribution sigma hyperparameter", 2))
+        elif specify_config == "Custom":
+            # Allow the user to input their custom configuration
+            # - Intercept
+            int_dist = 'Normal'
+            int_mu = int(st.text_input("Intercept Normal Distribution mu parameter", 0))
+            int_sigma = int(st.text_input("Intercept Normal Distribution sigma parameter", 2))
 
-        # - Alpha
-        alpha_dist='Beta'
-        alpha_alpha = int(st.text_input("Alpha Beta Distribution alpha parameter", 1))
-        alpha_beta = int(st.text_input("Alpha Beta Distribution beta parameter", 3))
+            # - Beta channel
+            beta_dist='HalfNormal'
+            beta_sigma = int(st.text_input("Beta_Channel HalfNormal Distribution sigma parameter", 2))
 
-        # - Lambda
-        lam_dist='Gamma'
-        lam_alpha = int(st.text_input("Lambda Gamma Distribution alpha parameter", 1))
-        lam_beta = int(st.text_input("Lambda Gamma Distribution beta parameter", 1))
+            # - Likelihood
+            ll_dist='Normal'
+            ll_sigma_dist = 'HalfNormal'
+            ll_sigma_sigma = int(st.text_input("Likelihood Normal Distribution sigma hyperparameter", 2))
 
-        # - Gamma control
-        gam_con_dist='Normal'
-        gam_con_mu = int(st.text_input("Gamma Control Normal Distribution mu parameter", 0))
-        gam_con_sigma = int(st.text_input("Gamma Control Normal Distribution sigma parameter", 2))
+            # - Alpha
+            alpha_dist='Beta'
+            alpha_alpha = int(st.text_input("Alpha Beta Distribution alpha parameter", 1))
+            alpha_beta = int(st.text_input("Alpha Beta Distribution beta parameter", 3))
 
-        # - Gamma fourier
-        gam_fou_dist='Laplace'
-        gam_fou_mu = int(st.text_input("Gamma Fourier Laplace Distribution mu parameter", 0))
-        gam_fou_b = int(st.text_input("Gamma Fourier Laplace Distribution beta parameter", 1))
+            # - Lambda
+            lam_dist='Gamma'
+            lam_alpha = int(st.text_input("Lambda Gamma Distribution alpha parameter", 1))
+            lam_beta = int(st.text_input("Lambda Gamma Distribution beta parameter", 1))
 
-        # Define configuration
-        my_model_config = custom_config(int_dist, int_mu, int_sigma,
-                  beta_dist, beta_sigma,
-                  ll_dist, ll_sigma_dist, ll_sigma_sigma,
-                  alpha_dist, alpha_alpha, alpha_beta,
-                  lam_dist, lam_alpha, lam_beta,
-                  gam_con_dist, gam_con_mu, gam_con_sigma,
-                  gam_fou_dist, gam_fou_mu, gam_fou_b)
-        
-        # Create custom configuration model
-        yearly_seasonality = st.text_input("Yearly seasonality (Defaults to 2)", 2)
-        final_model = delayed_saturated_mmm(my_model_config, channel_list, yearly_seasonality)
+            # - Gamma control
+            gam_con_dist='Normal'
+            gam_con_mu = int(st.text_input("Gamma Control Normal Distribution mu parameter", 0))
+            gam_con_sigma = int(st.text_input("Gamma Control Normal Distribution sigma parameter", 2))
 
-    # Fit the model
-    if st.button("Create model"):
-        fit_model(final_model, X, y)
+            # - Gamma fourier
+            gam_fou_dist='Laplace'
+            gam_fou_mu = int(st.text_input("Gamma Fourier Laplace Distribution mu parameter", 0))
+            gam_fou_b = int(st.text_input("Gamma Fourier Laplace Distribution beta parameter", 1))
+
+            # Define configuration
+            my_model_config = custom_config(int_dist, int_mu, int_sigma,
+                    beta_dist, beta_sigma,
+                    ll_dist, ll_sigma_dist, ll_sigma_sigma,
+                    alpha_dist, alpha_alpha, alpha_beta,
+                    lam_dist, lam_alpha, lam_beta,
+                    gam_con_dist, gam_con_mu, gam_con_sigma,
+                    gam_fou_dist, gam_fou_mu, gam_fou_b)
+            
+            # Create custom configuration model
+            yearly_seasonality = st.text_input("Yearly seasonality (Defaults to 2)", 2)
+            final_model = delayed_saturated_mmm(my_model_config, channel_list, yearly_seasonality)
+
+        # Fit the model
+        if st.button("Create model"):
+            progress_text = "Fitting model. This should take about 20 minutes."
+            my_bar = st.progress(0, text=progress_text)
+            fit_model(final_model, X, y)
 
 
 if __name__ == '__main__':
