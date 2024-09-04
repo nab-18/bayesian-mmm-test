@@ -212,7 +212,7 @@ def fit_model(model, X, y, random_seed=1):
     Args:
         X: Feature variables defined in create_model_specification
         y: Target variables created in create_model_specification
-        target_accept: The 
+        random_seed: Specify for reproducibility
     """
     model.fit(X, y, target_accept=0.95, random_seed=random_seed)
 
@@ -235,7 +235,59 @@ def main():
     df = read_in_data(uploaded_file)
     df_features, df_column_list = time_series_features(df)
 
-    
+    # - Create the priors
+    prior_sigma, channel_list = create_priors(df_features, df_column_list)
+
+    # - Create model specification with default config
+    dummy_model = create_model_specification(df_features, channel_list)
+
+    # - Custom configuration?
+        # We can create multiple premade configurations for different applications. More research is required
+    specify_config = st.radio("Which configuration would you like to use?",
+                              ["Default", "Custom"],
+                              captions=[
+                                  "Use the default configuration",
+                                  "Create your own custom configuration. Leaving variables blank will result in default values."
+                              ])
+    if specify_config == "Default":
+        # Set the final model to the default configuration
+        final_model = dummy_model
+
+    elif specify_config == "Custom":
+        # Allow the user to input their custom configuration
+        # - Intercept
+        int_dist = 'Normal'
+        int_mu = int(st.text_input("Intercept Normal Distribution mu parameter", 0))
+        int_sigma = int(st.text_input("Intercept Normal Distribution sigma parameter", 2))
+
+        # - Beta channel
+        beta_dist='HalfNormal'
+        beta_sigma = int(st.text_input("Beta_Channel HalfNormal Distribution sigma parameter", 2))
+
+        # - Likelihood
+        ll_dist='Normal'
+        l_sigma_dist='HalfNormal'
+        ll_sigma_sigma = int(st.text_input("Likelihood Normal Distribution sigma hyperparameter", 2))
+
+        # - Alpha
+        alpha_dist='Beta'
+        alpha_alpha = int(st.text_input("Alpha Beta Distribution alpha parameter", 1))
+        alpha_beta = int(st.text_input("Alpha Beta Distribution beta parameter", 3))
+
+        # - Lambda
+        lam_dist='Gamma'
+        lam_alpha = int(st.text_input("Lambda Gamma Distribution alpha parameter", 1))
+        lam_beta = int(st.text_input("Lambda Gamma Distribution beta parameter", 1))
+
+        # - Gamma control
+        gam_con_dist='Normal'
+        gam_con_mu = int(st.text_input("Gamma Control Normal Distribution mu parameter", 0))
+        gam_con_sigma = int(st.text_input("Gamma Control Normal Distribution sigma parameter", 2))
+
+        # - Gamma fourier
+        gam_fou_dist='Laplace'
+        gam_fou_mu = int(st.text_input("Gamma Fourier Laplace Distribution mu parameter", 0))
+        gam_fou_b = int(st.text_input("Gamma Fourier Laplace Distribution beta parameter", 1))
 
 
 
