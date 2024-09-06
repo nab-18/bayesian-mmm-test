@@ -10,7 +10,6 @@ import pytime as tk
 from pymc_marketing.mmm.delayed_saturated_mmm import DelayedSaturatedMMM
 import seaborn as sns
 import matplotlib.pyplot as plt
-import time
 from ModelFunctions import *
 from PreprocessFunctions import *
 
@@ -104,15 +103,15 @@ def main():
             final_model = delayed_saturated_mmm(my_model_config, channel_list, yearly_seasonality)
 
         # Fit the model
-        if st.button("Create model"):
+        if st.button("Create model", key=0):
             with st.status("Fitting model...") as status:
                 final_model.fit(X, y, target_accept = 0.95, random_seed = 888)
                 status.update(label="Model has been fit!", state="complete", expanded=False)
             
 
     
-        # Visualisations
-            if st.button("Evaluate the model"):  # Add descriptions to each plot, this is currently very uninformative and difficult to interpret
+                # Visualisations
+                #if st.button("Evaluate the model", key=1):  # Add descriptions to each plot, this is currently very uninformative and difficult to interpret
                 #try:
                 st.header("Visualisations")
 
@@ -160,8 +159,8 @@ def main():
                 roas_summary = roas_df.groupby("channel")['roas'].describe(percentiles=[0.025, 0.975])
                 st.dataframe(roas_summary)
             
-            #except:
-                # st.warning("Your model might not have been fit. Please fit the model before evaluating it.")
+                #except:
+                    # st.warning("Your model might not have been fit. Please fit the model before evaluating it.")
 
 
 if __name__ == '__main__':
