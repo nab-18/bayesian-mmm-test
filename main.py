@@ -19,7 +19,11 @@ def main():
     """
     # Headers and introduction
     st.title("Bayesian Marketing Mixed Model")
-    st.write("This is your instructions -> Write something")
+    st.write("## Data upload format")
+    st.write("1. Upload your data in csv format")
+    st.write("2. Column 1: Labelled 'Date' and have the format YYYY/MM/DD.")
+    st.write("3. Column 2: This should be your target variable (e.g. conversions, impressions, clicks etc).")
+    st.write("4. Columns 3-N: These are your channels and the associated spend per date.")
 
     # Upload file
     uploaded_file = st.file_uploader("Upload your csv file", type=['csv'])
